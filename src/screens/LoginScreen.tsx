@@ -9,7 +9,7 @@ interface Props {
   navigation: LoginScreenNavigationProp;
 }
 
-export function LoginScreen({navigation}: Props) {
+export default function LoginScreen({ navigation }: Props) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -19,70 +19,70 @@ export function LoginScreen({navigation}: Props) {
       setErrorMessage('Username and Password are required');
       return;
     }
-    // API Call goes here
-    console.log('Login attempt', {username, password});
-    // Navigate to Main Screen
+    // Navigate to Main Screen (Dashboards & Tabs)
+    navigation.replace('Main');
   };
 
   return (
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{flex: 1}}
-        >
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>🧾</Text>
-            </View>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Logo Placeholder */}
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>🧾</Text>
+          </View>
 
-            <Text style={styles.title}>Sign in to your{'\n'}Account</Text>
-            <Text style={styles.subtitle}>Enter your username and password to log in</Text>
+          <Text style={styles.title}>Sign in to your{'\n'}Account</Text>
+          <Text style={styles.subtitle}>Enter your username and password to log in</Text>
 
-            <View style={styles.formContainer}>
-              {errorMessage ? (
-                  <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                  </View>
-              ) : null}
+          <View style={styles.formContainer}>
+            {errorMessage ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
 
-              <TextInput
-                  style={styles.input}
-                  placeholder="Username"
-                  placeholderTextColor="#999"
-                  value={username}
-                  onChangeText={(text) => {
-                    setUsername(text);
-                    setErrorMessage('');
-                  }}
-                  autoCapitalize="none"
-              />
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor="#999"
+              value={username}
+              onChangeText={(text) => {
+                setUsername(text);
+                setErrorMessage('');
+              }}
+              autoCapitalize="none"
+            />
 
-              <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  placeholderTextColor="#999"
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    setErrorMessage('');
-                  }}
-                  secureTextEntry
-              />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                setErrorMessage('');
+              }}
+              secureTextEntry
+            />
 
-              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                <Text style={styles.loginButtonText}>Log In</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+              <Text style={styles.loginButtonText}>Log In</Text>
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.footerContainer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.replace('Register')}>
-                <Text style={styles.footerLink}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+          <View style={styles.footerContainer}>
+            <Text style={styles.footerText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.replace('Register')}>
+              <Text style={styles.footerLink}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

@@ -1,21 +1,55 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
-export default function ScanReceiptScreen() {
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Scan'> };
+
+export default function ScanReceiptScreen({ navigation }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [photo, setPhoto] = useState<any>(null);
+  const [capturing, setCapturing] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
 
-  if (!permission) {
-    return <View />;
-  }
+  const openGallery = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['image/*'],
+      copyToCacheDirectory: true,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      navigation.navigate('AddReceipt', { imageUri: result.assets[0].uri });
+    }
+  };
+
+  const capturePhoto = async () => {
+    if (!cameraRef.current || capturing) return;
+    setCapturing(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      if (photo?.uri) {
+        navigation.navigate('AddReceipt', { imageUri: photo.uri });
+      }
+    } catch {
+      Alert.alert('Error', 'Could not capture photo');
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  if (!permission) return <View />;
 
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={{ textAlign: 'center', marginBottom: 20 }}>We need your permission to show the camera</Text>
+        <Text style={styles.permissionText}>Camera permission is required</Text>
         <TouchableOpacity style={styles.btn} onPress={requestPermission}>
-            <Text style={styles.btnText}>Grant Permission</Text>
+          <Text style={styles.btnText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.btn, styles.galleryBtn]} onPress={openGallery}>
+          <Ionicons name="images-outline" size={20} color="#4A6CFA" />
+          <Text style={styles.galleryBtnText}>Pick from Gallery Instead</Text>
         </TouchableOpacity>
       </View>
     );
@@ -23,13 +57,29 @@ export default function ScanReceiptScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing="back">
+      <CameraView ref={cameraRef} style={styles.camera} facing="back">
         <View style={styles.overlay}>
-           <Text style={styles.scanText}>Scan your receipt</Text>
-           <View style={styles.frame} />
-           <TouchableOpacity style={styles.captureButton} onPress={() => console.log('Captured!')}>
-             <View style={styles.innerCaptureButton} />
-           </TouchableOpacity>
+          <Text style={styles.scanText}>Scan your receipt</Text>
+          <View style={styles.frame} />
+
+          <View style={styles.bottomBar}>
+            {/* Gallery button */}
+            <TouchableOpacity style={styles.galleryButton} onPress={openGallery}>
+              <Ionicons name="images-outline" size={28} color="#FFF" />
+              <Text style={styles.galleryButtonText}>Gallery</Text>
+            </TouchableOpacity>
+
+            {/* Capture button */}
+            <TouchableOpacity style={styles.captureButton} onPress={capturePhoto} disabled={capturing}>
+              <View style={styles.innerCaptureButton} />
+            </TouchableOpacity>
+
+            {/* Close button */}
+            <TouchableOpacity style={styles.galleryButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="close-outline" size={28} color="#FFF" />
+              <Text style={styles.galleryButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </CameraView>
     </View>
@@ -37,55 +87,28 @@ export default function ScanReceiptScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  btn: {
-     backgroundColor: '#4A6CFA',
-     padding: 15,
-     borderRadius: 10,
-     marginHorizontal: 40,
-     alignItems: 'center'
-  },
-  btnText: {
-     color: 'white',
-     fontWeight: 'bold'
-  },
-  camera: {
-    flex: 1,
-  },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
+  permissionText: { color: '#fff', fontSize: 16, textAlign: 'center', marginBottom: 20, paddingHorizontal: 32 },
+  btn: { backgroundColor: '#4A6CFA', padding: 15, borderRadius: 10, marginHorizontal: 40, alignItems: 'center', marginBottom: 12 },
+  btnText: { color: 'white', fontWeight: 'bold' },
+  galleryBtn: { backgroundColor: '#fff', flexDirection: 'row', gap: 8 },
+  galleryBtnText: { color: '#4A6CFA', fontWeight: 'bold' },
+  camera: { flex: 1, width: '100%' },
   overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 50,
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'space-between', alignItems: 'center', paddingVertical: 50,
   },
-  scanText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
+  scanText: { color: 'white', fontSize: 20, fontWeight: 'bold' },
+  frame: { width: 260, height: 360, borderWidth: 2, borderColor: 'white', borderRadius: 8 },
+  bottomBar: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-around', width: '100%', paddingHorizontal: 20,
   },
-  frame: {
-    width: 250,
-    height: 350,
-    borderWidth: 2,
-    borderColor: 'white',
-    backgroundColor: 'transparent'
-  },
+  galleryButton: { alignItems: 'center', gap: 4 },
+  galleryButtonText: { color: '#fff', fontSize: 12 },
   captureButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 70, height: 70, borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center',
   },
-  innerCaptureButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'white',
-  }
+  innerCaptureButton: { width: 54, height: 54, borderRadius: 27, backgroundColor: 'white' },
 });

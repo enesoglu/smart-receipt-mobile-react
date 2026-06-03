@@ -1,65 +1,130 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { authApi, AuthData } from '../services/api';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import { authApi, AuthData, UserProfile } from '../services/api';
+
+const TOKEN_KEY = 'smartreceipt.token';
 
 interface AuthContextType {
   token: string | null;
-  userId: number | null;
-  username: string | null;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  user: UserProfile | null;
+  isBootstrapping: boolean;
+  isAuthenticating: boolean;
+  login: (body: { email: string; password: string }) => Promise<{ success: boolean; error?: string }>;
+  register: (body: { fullName: string; email: string; password: string }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function profileFromAuth(data: AuthData): UserProfile {
+  return {
+    id: data.userId,
+    fullName: data.fullName,
+    email: data.email,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const setAuth = (data: AuthData) => {
-    setToken(data.token);
-    setUserId(data.userId);
-    setUsername(data.username);
-  };
-
-  const clearAuth = () => {
+  const clearAuth = useCallback(async () => {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
     setToken(null);
-    setUserId(null);
-    setUsername(null);
-  };
+    setUser(null);
+  }, []);
 
-  const login = async (usernameInput: string, password: string) => {
+  const applyAuth = useCallback(async (data: AuthData) => {
+    await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+    setToken(data.token);
+    setUser(profileFromAuth(data));
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!token) return;
+    const response = await authApi.me(token);
+    if (response.success && response.data) {
+      setUser(response.data);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function bootstrap() {
+      try {
+        const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+        if (!storedToken) return;
+
+        const response = await authApi.me(storedToken);
+        if (response.success && response.data) {
+          if (!mounted) return;
+          setToken(storedToken);
+          setUser(response.data);
+        } else {
+          await SecureStore.deleteItemAsync(TOKEN_KEY);
+        }
+      } catch {
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+      } finally {
+        if (mounted) setIsBootstrapping(false);
+      }
+    }
+
+    bootstrap();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const login = useCallback(async (body: { email: string; password: string }) => {
+    setIsAuthenticating(true);
     try {
-      const res = await authApi.login(usernameInput, password);
-      if (res.success && res.data) {
-        setAuth(res.data);
+      const response = await authApi.login(body);
+      if (response.success && response.data) {
+        await applyAuth(response.data);
         return { success: true };
       }
-      return { success: false, error: res.message ?? 'Login failed' };
-    } catch {
-      return { success: false, error: 'Could not connect to server' };
+      return { success: false, error: response.message ?? 'Login failed.' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Could not connect to server.' };
+    } finally {
+      setIsAuthenticating(false);
     }
-  };
+  }, [applyAuth]);
 
-  const register = async (usernameInput: string, password: string) => {
+  const register = useCallback(async (body: { fullName: string; email: string; password: string }) => {
+    setIsAuthenticating(true);
     try {
-      const res = await authApi.register(usernameInput, password);
-      if (res.success && res.data) {
-        setAuth(res.data);
+      const response = await authApi.register(body);
+      if (response.success && response.data) {
+        await applyAuth(response.data);
         return { success: true };
       }
-      return { success: false, error: res.message ?? 'Registration failed' };
-    } catch {
-      return { success: false, error: 'Could not connect to server' };
+      return { success: false, error: response.message ?? 'Registration failed.' };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Could not connect to server.' };
+    } finally {
+      setIsAuthenticating(false);
     }
-  };
+  }, [applyAuth]);
 
-  return (
-    <AuthContext.Provider value={{ token, userId, username, login, register, logout: clearAuth }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo<AuthContextType>(() => ({
+    token,
+    user,
+    isBootstrapping,
+    isAuthenticating,
+    login,
+    register,
+    logout: clearAuth,
+    refreshProfile,
+  }), [clearAuth, isAuthenticating, isBootstrapping, login, refreshProfile, register, token, user]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

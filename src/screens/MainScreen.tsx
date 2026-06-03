@@ -33,17 +33,17 @@ export default function MainScreen({ navigation }: Props) {
           elevation: 10,
         },
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home';
+          let tabIcon: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
+            tabIcon = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Search') {
-            iconName = focused ? 'search' : 'search-outline';
+            tabIcon = focused ? 'search' : 'search-outline';
           } else if (route.name === 'Receipts') {
-            iconName = focused ? 'receipt' : 'receipt-outline';
+            tabIcon = focused ? 'receipt' : 'receipt-outline';
           } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
+            tabIcon = focused ? 'person' : 'person-outline';
           }
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={tabIcon} size={size} color={color} />;
         },
       })}
     >

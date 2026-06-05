@@ -22,6 +22,8 @@
     "android": {
       "permissions": [
         "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "CAMERA",
         "READ_MEDIA_IMAGES"
       ],
       "adaptiveIcon": {
@@ -30,7 +32,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.smartreceipt"
     },
     "web": {
       "favicon": "./assets/favicon.png"
